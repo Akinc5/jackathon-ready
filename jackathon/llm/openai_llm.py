@@ -19,8 +19,9 @@ class OpenAICompatibleLLM(LLM):
         self.provider = provider
         self.model = model
         # Ollama needs no key, but the SDK insists on one, so pass a placeholder.
+        # The timeout stops an overloaded model from hanging a run for minutes.
         self.client = openai.AsyncOpenAI(
-            api_key=api_key or "not-needed", base_url=base_url, max_retries=4
+            api_key=api_key or "not-needed", base_url=base_url, max_retries=3, timeout=120
         )
 
     async def chat(
@@ -31,7 +32,7 @@ class OpenAICompatibleLLM(LLM):
     ) -> LLMResponse:
         params: dict[str, Any] = {
             "model": self.model,
-            "messages": [{"role": "system", "content": system}, *_to_openai(messages)],
+            "messages": [{"role": "system", "content": system}, *_to_openai(messages, self.provider)],
         }
         if tools:
             params["tools"] = [
@@ -75,14 +76,24 @@ class OpenAICompatibleLLM(LLM):
             getattr(response.usage, "prompt_tokens", 0) or 0,
             getattr(response.usage, "completion_tokens", 0) or 0,
         )
+        # Keep the provider's own copy of the tool calls. Gemini attaches a
+        # "thought signature" to each call (in extra fields) and rejects the
+        # next request if we don't send it back unchanged.
+        raw = [tc.model_dump(exclude_none=True) for tc in msg.tool_calls] if msg.tool_calls else None
         return LLMResponse(
-            message=Message(role="assistant", content=msg.content or "", tool_calls=calls),
+            message=Message(
+                role="assistant",
+                content=msg.content or "",
+                tool_calls=calls,
+                raw=raw,
+                raw_provider=self.provider,
+            ),
             stop_reason=choice.finish_reason or "",
             usage=usage,
         )
 
 
-def _to_openai(messages: list[Message]) -> list[dict[str, Any]]:
+def _to_openai(messages: list[Message], provider: str | None = None) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for m in messages:
         if m.role == "user":
@@ -92,7 +103,9 @@ def _to_openai(messages: list[Message]) -> list[dict[str, Any]]:
             out.append({"role": "tool", "tool_call_id": m.tool_call_id, "content": content})
         else:
             entry: dict[str, Any] = {"role": "assistant", "content": m.content or None}
-            if m.tool_calls:
+            if m.raw is not None and m.raw_provider == provider:
+                entry["tool_calls"] = m.raw  # replay exactly what this provider sent
+            elif m.tool_calls:
                 entry["tool_calls"] = [
                     {
                         "id": c.id,

@@ -19,7 +19,15 @@ Rules:
 - Each option needs a concrete "wow moment" for the demo.
 - Make the 5 options genuinely different from each other (different tracks, users or approaches).
 
-Scoring: rate each criterion from 1 to 10. Be strict: 9-10 should be rare, and a typical solid idea scores 5-7. The total score is calculated for you, so don't add one."""
+Scoring: rate each criterion from 1 to 10, using this scale:
+- 9-10: exceptional. At most one 9 or 10 per criterion across all 5 options.
+- 7-8: clearly strong.
+- 5-6: solid but ordinary. This is where most ideas land on most criteria.
+- 1-4: a real weakness.
+Scores exist to tell the options apart. If every option scores 8+, the ranking is useless, so spread them out and be honest about weaknesses, especially feasibility in the time limit.
+The total score and the ranking are calculated for you, so don't add a total.
+
+In `recommendation`, refer to options by their title, never by number. They will be re-ordered after you submit."""
 
 
 class StrategistAgent(Agent[StrategyReport]):

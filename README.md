@@ -33,13 +33,15 @@ Run the tests (offline, free): `pytest`.
 Each agent's model is set in `.env` as `provider:model`:
 
 ```ini
-JACK_MODEL=anthropic:claude-opus-5-5          # default for every agent
-JACK_MODEL_RESEARCH=gemini:gemini-2.5-flash   # override just one agent
+JACK_MODEL=gemini:gemini-flash-lite-latest      # default for every agent
+JACK_MODEL_STRATEGIST=gemini:gemini-3.6-flash   # override just one agent
 ```
 
 Supported providers: `anthropic`, `openai`, `gemini`, `groq`, `openrouter`, `ollama` (local and free). Use a cheaper model for the Research agent, which makes lots of calls, and a stronger one for the Strategist.
 
-The Research agent searches with DuckDuckGo by default (no key needed). Add a `TAVILY_API_KEY` for better results.
+**Free setup (tested):** a Gemini key from [AI Studio](https://aistudio.google.com) with the two models above. Groq's free tier caps requests at about 8K tokens, which is too small for the Research agent.
+
+**Web search:** add a free `TAVILY_API_KEY` ([tavily.com](https://tavily.com), 1,000 searches/month, no card needed). Without one, the agent falls back to keyless search through the `ddgs` library, which often returns nothing.
 
 ---
 

@@ -137,9 +137,11 @@ def _execute(store: RunStore, state: ProjectState) -> None:
     console.print("[dim]Next up (Phase 2): the Architect agent turns this into a build plan.[/]")
 
 
-async def ask_user_to_choose(strategy: StrategyReport) -> int:
-    render_strategy(strategy)
-    n = len(strategy.options)
+async def ask_user_to_choose(state: ProjectState) -> int:
+    if state.research:
+        render_research(state.research)
+    render_strategy(state.strategy)
+    n = len(state.strategy.options)
     pick = IntPrompt.ask("Which problem statement do you want to build?", choices=[str(i) for i in range(1, n + 1)], default=1)
     return pick - 1
 

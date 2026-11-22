@@ -12,12 +12,12 @@ from collections.abc import Awaitable, Callable
 from ..agents import Agent, ResearchAgent, StrategistAgent
 from ..llm import LLM, llm_for
 from .events import Event, EventBus
-from .models import ProjectState, StrategyReport
+from .models import ProjectState
 from .store import RunStore
 
-# Asks a human to pick one of the strategist's options; returns its index.
+# Shows a human the research and ranked options, and returns the index they pick.
 # The CLI asks in the terminal; the web UI will ask in the browser.
-ChooseFn = Callable[[StrategyReport], Awaitable[int]]
+ChooseFn = Callable[[ProjectState], Awaitable[int]]
 
 
 class Pipeline:
@@ -51,7 +51,7 @@ class Pipeline:
 
         if state.chosen_index is None:
             # Human checkpoint: the team, not the AI, decides what to build.
-            index = await self.choose(state.strategy)
+            index = await self.choose(state)
             if not 0 <= index < len(state.strategy.options):
                 raise ValueError(f"Choice {index + 1} is out of range.")
             state.chosen_index = index

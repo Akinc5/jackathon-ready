@@ -6,7 +6,7 @@ from jackathon.llm.anthropic_llm import _to_anthropic
 from jackathon.llm.openai_llm import _to_openai
 from jackathon.tools import json_schema
 from jackathon.tools.base import ToolError
-from jackathon.tools.web import _check_url, html_to_text
+from jackathon.tools.web import _check_url, html_to_text, simplify_query
 
 import pytest
 
@@ -44,6 +44,15 @@ def test_openai_format():
     assert out[3]["content"].startswith("ERROR:")
 
 
+def test_openai_replays_raw_tool_calls_from_same_provider():
+    raw = [{"id": "a", "type": "function", "function": {"name": "f", "arguments": "{}"},
+            "extra_content": {"google": {"thought_signature": "sig"}}}]
+    msg = Message(role="assistant", tool_calls=[ToolCall("a", "f", {})], raw=raw, raw_provider="gemini")
+    assert _to_openai([msg], "gemini")[0]["tool_calls"] is raw
+    # A different provider gets the rebuilt, signature-free version.
+    assert "extra_content" not in _to_openai([msg], "groq")[0]["tool_calls"][0]
+
+
 def test_json_schema_has_no_refs():
     schema = json_schema(StrategyReport)
     assert "$defs" not in schema and "$ref" not in str(schema)
@@ -66,6 +75,12 @@ def test_html_to_text_strips_scripts_and_nav():
 def test_fetch_blocks_local_urls(url):
     with pytest.raises(ToolError):
         _check_url(url)
+
+
+def test_simplify_query_strips_operators():
+    assert simplify_query('"HackMIT 2026" winners OR finalists site:plume.hackmit.org/gallery') == (
+        "HackMIT 2026 winners finalists plume.hackmit.org"
+    )
 
 
 def test_fetch_allows_public_urls():

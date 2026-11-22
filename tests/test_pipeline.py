@@ -51,8 +51,8 @@ def test_full_run_ranks_by_score_and_saves(tmp_path):
     state = store.create("TestHack", None, TeamProfile(skills=["python"]))
     seen = {}
 
-    async def choose(strategy):
-        seen["titles"] = [o.title for o in strategy.options]
+    async def choose(state):
+        seen["titles"] = [o.title for o in state.strategy.options]
         return 0
 
     result = asyncio.run(Pipeline(store, EventBus(), choose, llm_factory=fake_llms()).run(state))
@@ -70,7 +70,7 @@ def test_resume_skips_finished_stages(tmp_path):
     store = RunStore(tmp_path)
     state = store.create("TestHack", "Health", TeamProfile())
 
-    async def choose(strategy):
+    async def choose(state):
         raise KeyboardInterrupt  # user quits at the checkpoint
 
     try:
@@ -84,7 +84,7 @@ def test_resume_skips_finished_stages(tmp_path):
     def no_llm(role):
         raise AssertionError("finished stages must not call the model again")
 
-    async def choose_second(strategy):
+    async def choose_second(state):
         return 1
 
     resumed = asyncio.run(Pipeline(store, EventBus(), choose_second, llm_factory=no_llm).run(saved))

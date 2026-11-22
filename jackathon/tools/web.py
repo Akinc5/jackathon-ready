@@ -30,7 +30,7 @@ async def web_search(args: SearchArgs) -> str:
     key = tavily_key()
     results = await (_tavily(args, key) if key else _duckduckgo(args))
     if not results:
-        return "No results. Try a different query."
+        return "No results. Try a shorter query with plain keywords (no quotes, OR, or site:)."
     return "\n\n".join(
         f"[{i}] {r['title']}\n{r['url']}\n{r['snippet']}" for i, r in enumerate(results, 1)
     )
@@ -53,19 +53,41 @@ async def _tavily(args: SearchArgs, key: str) -> list[dict[str, str]]:
 
 async def _duckduckgo(args: SearchArgs) -> list[dict[str, str]]:
     from ddgs import DDGS
+    from ddgs.exceptions import DDGSException, RatelimitException, TimeoutException
 
-    def search() -> list[dict]:
-        return list(DDGS().text(args.query, max_results=args.max_results))
+    def search(query: str) -> list[dict]:
+        try:
+            return list(DDGS().text(query, max_results=args.max_results))
+        except (RatelimitException, TimeoutException):
+            raise
+        except DDGSException as e:
+            if "no results" in str(e).lower():
+                return []
+            raise
 
+    # Keyless search is flaky: each attempt picks random backends, and some
+    # fail or choke on operators. So retry, the second time as plain keywords.
+    attempts = [args.query, simplify_query(args.query), args.query]
     try:
-        # The ddgs library is synchronous; run it in a thread so we don't block.
-        raw = await asyncio.to_thread(search)
-    except Exception as e:  # ddgs raises several exception types (rate limits, timeouts)
+        for query in attempts:
+            # The ddgs library is synchronous; run it in a thread so we don't block.
+            raw = await asyncio.to_thread(search, query)
+            if raw:
+                break
+    except DDGSException as e:
         raise ToolError(f"DuckDuckGo search failed: {e}") from e
     return [
         {"title": r.get("title", ""), "url": r.get("href", ""), "snippet": r.get("body", "")}
         for r in raw
     ]
+
+
+def simplify_query(query: str) -> str:
+    """Strip search operators: '"HackMIT 2026" OR winners site:x.org' -> 'HackMIT 2026 winners x.org'."""
+    q = query.replace('"', " ")
+    q = re.sub(r"\bsite:(\S+)", lambda m: m.group(1).split("/")[0], q)
+    q = re.sub(r"\b(OR|AND)\b", " ", q)
+    return " ".join(q.split())
 
 
 # --- fetch_page ---------------------------------------------------------------

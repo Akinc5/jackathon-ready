@@ -14,6 +14,7 @@ validation errors and the model fixes them.
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import ClassVar, Generic, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -60,6 +61,7 @@ class Agent(Generic[OutputT]):
         messages = [Message.user(task)]
 
         await self._emit("agent_started", f"{self.name} started", model=self.llm.label)
+        started = time.monotonic()
 
         for step in range(1, self.max_steps + 1):
             if step == self.max_steps:
@@ -83,10 +85,12 @@ class Agent(Generic[OutputT]):
             outcomes = await asyncio.gather(*(self._handle(c, tools) for c in reply.tool_calls))
             for result_msg, output in outcomes:
                 if output is not None:
+                    seconds = round(time.monotonic() - started)
                     await self._emit(
                         "agent_finished",
-                        f"{self.name} finished in {step} steps",
+                        f"{self.name} finished in {step} steps ({seconds // 60}m {seconds % 60}s)",
                         steps=step,
+                        seconds=seconds,
                         input_tokens=self.usage.input_tokens,
                         output_tokens=self.usage.output_tokens,
                     )
