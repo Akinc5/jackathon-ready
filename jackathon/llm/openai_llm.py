@@ -6,6 +6,7 @@ offer an OpenAI-compatible endpoint. Only the base URL and API key differ.
 
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any
 
@@ -96,7 +97,13 @@ class OpenAICompatibleLLM(LLM):
 def _to_openai(messages: list[Message], provider: str | None = None) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for m in messages:
-        if m.role == "user":
+        if m.role == "user" and m.images:
+            parts: list[dict[str, Any]] = [{"type": "text", "text": m.content}]
+            for img in m.images:
+                url = f"data:{img.media_type};base64,{base64.b64encode(img.data).decode()}"
+                parts.append({"type": "image_url", "image_url": {"url": url}})
+            out.append({"role": "user", "content": parts})
+        elif m.role == "user":
             out.append({"role": "user", "content": m.content})
         elif m.role == "tool":
             content = f"ERROR: {m.content}" if m.is_error else m.content

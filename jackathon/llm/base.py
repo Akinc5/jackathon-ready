@@ -31,6 +31,14 @@ class ToolCall:
 
 
 @dataclass
+class Image:
+    """An image attached to a user message, e.g. a hackathon flyer."""
+
+    data: bytes
+    media_type: str  # image/png, image/jpeg, image/webp or image/gif
+
+
+@dataclass
 class Message:
     """One turn in a conversation.
 
@@ -49,10 +57,11 @@ class Message:
     # "thinking" blocks, so the adapter keeps it here and replays it.
     raw: Any = None
     raw_provider: str | None = None
+    images: list[Image] = field(default_factory=list)  # user messages only
 
     @classmethod
-    def user(cls, text: str) -> Message:
-        return cls(role="user", content=text)
+    def user(cls, text: str, images: list[Image] | None = None) -> Message:
+        return cls(role="user", content=text, images=images or [])
 
     @classmethod
     def tool_result(cls, call_id: str, text: str, is_error: bool = False) -> Message:

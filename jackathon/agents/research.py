@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from ..core.models import ResearchReport
+from ..core.models import HackathonBrief, ResearchReport
 from ..tools import FETCH_PAGE, WEB_SEARCH, Tool
 from .base import Agent
 
@@ -42,10 +42,17 @@ class ResearchAgent(Agent[ResearchReport]):
         return [WEB_SEARCH, FETCH_PAGE]
 
     @staticmethod
-    def build_task(hackathon: str, track: str | None) -> str:
+    def build_task(hackathon: str, track: str | None, brief: HackathonBrief | None = None) -> str:
         focus = (
             f"The team is targeting the track: {track}. Research it in extra depth, but still list every track."
             if track
             else "No track chosen yet: cover all tracks equally."
         )
-        return f"Hackathon: {hackathon}\n{focus}\nToday's date: {date.today().isoformat()}"
+        task = f"Hackathon: {hackathon}\n{focus}\nToday's date: {date.today().isoformat()}"
+        if brief:
+            task += (
+                "\n\nThe team uploaded the official flyer or document. These facts come straight from it: treat them "
+                "as ground truth, copy them into your report, and use the web to fill the gaps (especially past "
+                f"winners and judge insights).\n{brief.model_dump_json(indent=2)}"
+            )
+        return task

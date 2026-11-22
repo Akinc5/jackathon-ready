@@ -21,6 +21,10 @@ EventKind = Literal[
     "tool_call",
     "tool_result",
     "agent_finished",
+    "build_verified",  # our own re-check after a builder says it's done
+    "smoke_result",  # the browser test's verdict, per screen
+    "output",  # a deliverable is ready (repo, deploy, deck, doc)
+    "notice",
     "error",
 ]
 

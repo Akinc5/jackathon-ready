@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 
 from ..config import PROVIDERS, model_for
-from .base import LLM, LLMError, LLMResponse, Message, ToolCall, ToolSpec, Usage
+from .base import LLM, Image, LLMError, LLMResponse, Message, ToolCall, ToolSpec, Usage
 
 __all__ = [
+    "Image",
     "LLM",
     "LLMError",
     "LLMResponse",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 from typing import Any
 
@@ -98,6 +99,17 @@ def _to_anthropic(messages: list[Message]) -> list[dict[str, Any]]:
 
     for m in messages:
         if m.role == "user":
+            for img in m.images:
+                add_user_block(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": img.media_type,
+                            "data": base64.b64encode(img.data).decode(),
+                        },
+                    }
+                )
             add_user_block({"type": "text", "text": m.content})
         elif m.role == "tool":
             add_user_block(

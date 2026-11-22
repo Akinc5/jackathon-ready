@@ -20,7 +20,7 @@ from typing import ClassVar, Generic, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from ..core.events import Event, EventBus
-from ..llm import LLM, Message, ToolCall, ToolSpec, Usage, llm_for
+from ..llm import LLM, Image, Message, ToolCall, ToolSpec, Usage, llm_for
 from ..tools import Tool, ToolError, json_schema
 
 OutputT = TypeVar("OutputT", bound=BaseModel)
@@ -54,11 +54,11 @@ class Agent(Generic[OutputT]):
 
     # --- the loop -------------------------------------------------------------
 
-    async def run(self, task: str) -> OutputT:
+    async def run(self, task: str, images: list[Image] | None = None) -> OutputT:
         tools = {t.name: t for t in self.tools()}
         specs = [t.spec() for t in tools.values()] + [self._submit_spec()]
         system = self.system_prompt() + _SUBMIT_RULES
-        messages = [Message.user(task)]
+        messages = [Message.user(task, images)]
 
         await self._emit("agent_started", f"{self.name} started", model=self.llm.label)
         started = time.monotonic()
@@ -153,8 +153,11 @@ _LAST_STEP = f"You are out of steps. Call `{SUBMIT_TOOL}` now with your best res
 
 def _describe(call: ToolCall) -> str:
     """A one-line summary of a tool call, for display."""
-    first_arg = next(iter(call.arguments.values()), "")
-    return f"{call.name}: {first_arg}" if first_arg else call.name
+    args = call.arguments
+    # Prefer a short identifying argument (models may send `content` first for write_file).
+    key = next((k for k in ("path", "query", "url") if k in args), next(iter(args), None))
+    value = str(args[key]).splitlines()[0][:100] if key and args[key] else ""
+    return f"{call.name}: {value}" if value else call.name
 
 
 def _first_line(text: str, limit: int = 120) -> str:
